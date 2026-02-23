@@ -12,9 +12,6 @@ import '../../view/onboarding/onboard_screen.dart';
 import '../../view/splash_screen/splash_screen.dart';
 
 
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 
 
@@ -23,9 +20,8 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: '/splash',
 
-    // 🔥 THIS IS IMPORTANT
-    refreshListenable:
-    GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
+    // refreshListenable:
+    // GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
 
     redirect: (context, state) {
       final user = FirebaseAuth.instance.currentUser;
@@ -35,7 +31,6 @@ class AppRouter {
       final goingToSignUp = state.uri.toString() == '/signup';
       final goingToSplash = state.uri.toString() == '/splash';
 
-      // If not logged in
       if (!isLoggedIn &&
           !goingToSignIn &&
           !goingToSignUp &&
@@ -43,7 +38,6 @@ class AppRouter {
         return '/onboarding';
       }
 
-      // If logged in, prevent going back to auth screens
       if (isLoggedIn && (goingToSignIn || goingToSignUp)) {
         return '/home';
       }

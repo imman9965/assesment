@@ -55,8 +55,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     try {
       // 1️⃣ Create email/password user
-      final userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
+      final userCredential =
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
       // 2️⃣ Send OTP
       await FirebaseAuth.instance.verifyPhoneNumber(
@@ -77,7 +80,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
         codeSent: (verificationId, resendToken) {
           setState(() => isLoading = false);
 
-          context.push('/otp', extra: {"verificationId": verificationId});
+          context.push(
+            '/otp',
+            extra: {"verificationId": verificationId},
+          );
         },
 
         codeAutoRetrievalTimeout: (_) {},

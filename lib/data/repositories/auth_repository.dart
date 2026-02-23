@@ -57,6 +57,10 @@ class AuthRepository {
     return completer.future;
   }
 
+
+
+
+
   Future<void> linkPhoneWithOtp(String verificationId, String smsCode) async {
     final credential = PhoneAuthProvider.credential(
       verificationId: verificationId,

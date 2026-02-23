@@ -7,10 +7,8 @@ class FCMService {
   FlutterLocalNotificationsPlugin();
 
   static Future<void> initialize() async {
-    // Request permission (Android 13+)
     await _messaging.requestPermission();
 
-    // Local notification initialization
     const AndroidInitializationSettings androidInit =
     AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -19,7 +17,6 @@ class FCMService {
 
     await _local.initialize(settings);
 
-    // Foreground message listener
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (message.notification != null) {
         showLocalNotification(
