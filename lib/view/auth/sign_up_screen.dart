@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +20,79 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final phoneController = TextEditingController();
+  bool isLoading = false;
+
+  Future<void> _handleSignUp() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+    final phone = phoneController.text.trim();
+
+    // 🔹 Required fields
+    if (email.isEmpty || password.isEmpty || phone.isEmpty) {
+      _showMessage("All fields are required");
+      return;
+    }
+
+    // 🔹 Email validation
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+      _showMessage("Enter a valid email");
+      return;
+    }
+
+    // 🔹 Phone validation
+    if (!RegExp(r'^[0-9]{10}$').hasMatch(phone)) {
+      _showMessage("Enter valid 10-digit phone number");
+      return;
+    }
+
+    // 🔹 Password validation
+    if (password.length < 6) {
+      _showMessage("Password must be at least 6 characters");
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      // 1️⃣ Create email/password user
+      final userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+
+      // 2️⃣ Send OTP
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: "+91$phone",
+
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          await userCredential.user?.linkWithCredential(credential);
+        },
+
+        verificationFailed: (FirebaseAuthException e) async {
+          setState(() => isLoading = false);
+
+          _showMessage(e.message ?? "Verification failed");
+
+          await userCredential.user?.delete();
+        },
+
+        codeSent: (verificationId, resendToken) {
+          setState(() => isLoading = false);
+
+          context.push('/otp', extra: {"verificationId": verificationId});
+        },
+
+        codeAutoRetrievalTimeout: (_) {},
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() => isLoading = false);
+      _showMessage(e.message ?? "Sign up failed");
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +117,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const Text("Already have an Account? "),
                     GestureDetector(
                       onTap: () => context.go('/signin'),
-                      child: const Text("Sign in", style: TextStyle(color: Colors.blue)),
+                      child: const Text(
+                        "Sign in",
+                        style: TextStyle(color: Colors.blue),
+                      ),
                     ),
                   ],
                 ),
@@ -58,7 +135,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           bool success = await authVM.signInWithGoogle();
                           if (success && mounted) context.go('/home');
                           if (authVM.errorMessage != null && mounted) {
-                            SnackbarHelper.showSnackBar(context, authVM.errorMessage!);
+                            SnackbarHelper.showSnackBar(
+                              context,
+                              authVM.errorMessage!,
+                            );
                           }
                         },
                       ),
@@ -69,7 +149,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const Row(
                   children: [
                     Expanded(child: Divider()),
-                    Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Text("OR")),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 10),
+                      child: Text("OR"),
+                    ),
                     Expanded(child: Divider()),
                   ],
                 ),
@@ -88,8 +171,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   hint: "Enter Password",
                   obscureText: obscurePassword,
                   suffix: IconButton(
-                    icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () => setState(() => obscurePassword = !obscurePassword),
+                    icon: Icon(
+                      obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    ),
+                    onPressed:
+                        () =>
+                            setState(() => obscurePassword = !obscurePassword),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -101,45 +188,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 24),
                 CommonButton(
-                  text: authVM.isLoading ? "Please wait..." : "Sign Up",
-                  onTap: () async {
-                    final email = emailController.text.trim();
-                    final password = passwordController.text.trim();
-                    final phone = phoneController.text.trim();
-
-                    // Validation
-                    if (email.isEmpty || password.isEmpty || phone.isEmpty) {
-                      SnackbarHelper.showSnackBar(context, "All fields are required");
-                      return;
-                    }
-                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
-                      SnackbarHelper.showSnackBar(context, "Enter a valid email");
-                      return;
-                    }
-                    if (!RegExp(r'^[0-9]{10}$').hasMatch(phone)) {
-                      SnackbarHelper.showSnackBar(context, "Enter valid 10-digit phone number");
-                      return;
-                    }
-                    if (password.length < 6) {
-                      SnackbarHelper.showSnackBar(context, "Password must be at least 6 characters");
-                      return;
-                    }
-
-                    bool emailCreated = await authVM.signUpWithEmail(email, password);
-                    if (!emailCreated) {
-                      if (authVM.errorMessage != null) {
-                        SnackbarHelper.showSnackBar(context, authVM.errorMessage!);
-                      }
-                      return;
-                    }
-
-                    String? verificationId = await authVM.sendOtp(phone);
-                    if (verificationId != null && mounted) {
-                      context.push('/otp', extra: {"verificationId": verificationId});
-                    } else if (authVM.errorMessage != null) {
-                      SnackbarHelper.showSnackBar(context, authVM.errorMessage!);
-                    }
-                  },
+                  text: isLoading ? "Please wait..." : "Sign Up",
+                  onTap: _handleSignUp,
                 ),
               ],
             ),
@@ -149,7 +199,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  Widget _label(String text) => Align(alignment: Alignment.centerLeft, child: Text(text));
+  Widget _label(String text) =>
+      Align(alignment: Alignment.centerLeft, child: Text(text));
 
   Widget socialButton({
     required IconData icon,
@@ -158,7 +209,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }) {
     return InkWell(
       borderRadius: BorderRadius.circular(8),
-      onTap: Provider.of<AuthViewModel>(context, listen: false).isLoading ? null : onTap,
+      onTap:
+          Provider.of<AuthViewModel>(context, listen: false).isLoading
+              ? null
+              : onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
@@ -178,7 +232,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
           children: [
             FaIcon(icon, size: 18, color: Colors.black),
             const SizedBox(width: 8),
-            Text(text, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w500)),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),
