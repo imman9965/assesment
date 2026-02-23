@@ -56,7 +56,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         text: "Use Google",
                         onTap: () async {
                           bool success = await authVM.signInWithGoogle();
-                          if (success && mounted) context.go('/otp');
+                          if (success && mounted) context.go('/home');
                           if (authVM.errorMessage != null && mounted) {
                             SnackbarHelper.showSnackBar(context, authVM.errorMessage!);
                           }
